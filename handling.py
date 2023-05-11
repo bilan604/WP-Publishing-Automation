@@ -1,16 +1,13 @@
-import os
+
 import json
-import time
 import requests
 import asyncio
-from bs4 import BeautifulSoup
 from analyzer import get_statistics_task
 
 
 
 async def get_api_result(api_key, serps_to_check, query):
     
-    # set up the request parameters
     params = {
         'api_key': api_key,
         'page': 1,
@@ -18,22 +15,13 @@ async def get_api_result(api_key, serps_to_check, query):
         'num': serps_to_check * 11,
         'q': query
     }
-    # make the http GET request to VALUE SERP
 
     api_result = requests.get('https://api.valueserp.com/search', params)
     return api_result.json()
-    # remove override for api requests (free trial)
-    #await asyncio.sleep(3)
-    
-    #with open("cache.json") as f:
-        #contents = f.read()
-        #dictionary = json.loads(contents)
-    #print(f" {dictionary=} ")
-    #return dictionary
 
 
 def filter_blacklisted(organic_results, blacklisted_urls):
-    # more robust
+
     blacklisted_urls = set(blacklisted_urls)
     return [res for res in organic_results if res["domain"] not in blacklisted_urls]
 
@@ -56,8 +44,6 @@ async def get_statistics_by_keywords_task(keywords, num_pages, blacklisted_urls,
     for keyword in keywords.split(","):
         get_serp_response = asyncio.create_task(get_api_result(credentials["VALUE_SERP_API_KEY"], num_pages, keyword))
         serp_response = await get_serp_response
-        print(f" {type(serp_response)=} ")
-        print(f" {list(serp_response.keys())=} ")
         organic_results = serp_response["organic_results"]
         # for each keyword
         organic_results = filter_blacklisted(organic_results, blacklisted_urls)
@@ -76,8 +62,7 @@ async def get_handle_statistics(queries, blacklisted_urls, credentials):
         get_statistics_by_keywords = asyncio.create_task(get_statistics_by_keywords_task(keywords, num_pages, blacklisted_urls, credentials))
         statistics_from_keywords = await get_statistics_by_keywords
         statistics += statistics_from_keywords
-        print("PAUSE")
-        time.sleep(350)
+
     return statistics
 
 

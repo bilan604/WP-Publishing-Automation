@@ -19,9 +19,7 @@ async def main():
             key, value = row.split("=")
             credentials[key] = value
     
-
     df = pd.read_csv("input.csv")
-    
     columns = {}
     for colName in df.columns:
         columns[colName] = list(df[colName])
@@ -33,7 +31,7 @@ async def main():
         queries[i]["keywords"] = keywords
         queries[i]["SERPNumber"] = columns["SERPNumber"][i]
     
-    ###########
+    ########### Override
     blacklisted_urls = ["www.bloomberg.com"]
     get_statistics = asyncio.create_task(get_handle_statistics(queries, blacklisted_urls, credentials))
     statistics = await get_statistics
