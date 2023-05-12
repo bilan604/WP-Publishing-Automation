@@ -1,10 +1,9 @@
-
+import re
 import json
 import requests
 import asyncio
 from bs4 import BeautifulSoup
-import re
-#from analyzer import get_statistics_task
+from analyzer import get_GPT_statistics_task
 
 
 relevant_sentences_by_keyword = {}
@@ -46,7 +45,9 @@ async def get_update_by_keywords(keyword, all_text_tags):
     for text_tag in all_text_tags:
         # generate_id
         sentence = re.sub("[^a-zA-Z|0-9|%|.| ]", " ", text_tag.lower())
-        
+        # Skip giant text corpuses
+        if len(sentence) >= 2500:
+            continue
         sentenceLst = re.sub("( )+?", " ", sentence).split(" ")
         for gap_size in range(m, 0, -1):
             for i in range(len(sentenceLst)-gap_size+1):
@@ -63,27 +64,20 @@ async def get_update_by_keywords(keyword, all_text_tags):
                     # Add the sentence id to the row
                     if row_number not in relevant_data_by_row:
                         relevant_data_by_row[row_number] = set({})
-                    relevant_data_by_row[row_number].add(sentence_id)
-
-                    """
-                    if len(relevant_sentences_by_keyword[token]) > 100:
-                        # collected enough data
-                        with open("keyword_date.txt", "w") as f:
-                            f.write(str(len(relevant_sentences_by_keyword[token])) + " " + token)
-                            data = relevant_sentences_by_keyword.pop(token)
-                            for j in range(len(data)):
-                                f.write(data[j])
-                        # List to not repeatedly calculate
-                        with open("completed_keywords.txt", "w") as f:
-                            f.write(token)
-                        """
-                    break
+                    # Do not store more than 200 sentences per row
+                    if len(relevant_data_by_row[row_number]) < 1000:
+                        relevant_data_by_row[row_number].add(sentence_id)
+                        break
     return
 
 async def get_sentences_task(keyword, link, credentials):
-    get_resp_text = asyncio.create_task(get_resp_text_task(link))
-    src = await get_resp_text
-    soup = BeautifulSoup(src, 'html.parser')
+    try:
+        get_resp_text = asyncio.create_task(get_resp_text_task(link))
+        src = await get_resp_text
+        soup = BeautifulSoup(src, 'html.parser')
+    except:
+        print("Crash On Request:", link)
+        return
 
     text_tags = ["p", "b", "h3", "h4", "h5", "li", "text"]
     all_text_tags = []
@@ -96,37 +90,51 @@ async def get_sentences_task(keyword, link, credentials):
         all_text_tags += tags
     update_sentences_by_keywords = asyncio.create_task(get_update_by_keywords(keyword, all_text_tags))
     await update_sentences_by_keywords
+    return
     
 
 async def get_keyword_sentences_task(keyword, organic_results, credentials):
+    # For each keyword
     for result in organic_results:
         link = result["link"]
         print(f" {link=} ")
         get_sentences = asyncio.create_task(get_sentences_task(keyword, link, credentials))
         await get_sentences
-    with open("relevant_data_by_row.json", "w") as f1:
-        dd = {}
-        for k, v in relevant_data_by_row.items():
-            dd[k] = [sentences[sid] for sid in v]
-        json.dump(dd, f1)
-    with open("sentences.json", "w") as f2:
-        json.dump(sentences, f2)
+    print(f" {relevant_data_by_row=} ")
+    return 
 
 
-
-async def get_relevant_sentences_by_keywords_task(keywords, num_pages, blacklisted_urls, credentials):
+async def get_relevant_data_by_row_task(keywords, num_pages, blacklisted_urls, credentials):
+    # For each csv row, containing a list of comma separated keywords
     for keyword in keywords.split(","):
-        ################## Add statistics back to the search query
+        # Add 'statistics' back to the search query
         if "statistics" not in keyword:
             keyword += " statistics"
         get_serp_response = asyncio.create_task(get_api_result(credentials["VALUE_SERP_API_KEY"], num_pages, keyword))
         serp_response = await get_serp_response
         organic_results = serp_response["organic_results"]
-        # for each keyword
         organic_results = filter_blacklisted(organic_results, blacklisted_urls)
         get_keyword_sentences = asyncio.create_task(get_keyword_sentences_task(keyword, organic_results, credentials))
         await get_keyword_sentences
 
+        # Safety precaution for saving
+        try:
+            dd = {}
+            for k, v in relevant_data_by_row.items():
+                dd[k] = list(v)
+            if dd:
+                with open("relevant_data_by_row.json", "w") as f1:
+                    json.dump(dd, f1)
+            if len(sentences) > 50:
+                with open("sentences.json", "w") as f2:
+                    json.dump(sentences, f2)
+            if row_numbers:
+                with open("row_numbers.json", "w") as f3:
+                    json.dump(row_numbers, f3)
+        except:
+            print("Error on saving data")
+            pass
+    return
 
 
 async def get_handle_statistics(queries, blacklisted_urls, credentials):
@@ -148,8 +156,11 @@ async def get_handle_statistics(queries, blacklisted_urls, credentials):
         keywords = queries[rowNo]["Keywords"]
         num_pages = queries[rowNo]["SERPNumber"]
         # for each row
-        get_relevant_sentences_by_keywords = asyncio.create_task(get_relevant_sentences_by_keywords_task(keywords, num_pages, blacklisted_urls, credentials))
-        await get_relevant_sentences_by_keywords
-    return relevant_sentences_by_keyword
+        get_relevant_data_by_row = asyncio.create_task(get_relevant_data_by_row_task(keywords, num_pages, blacklisted_urls, credentials))
+        await get_relevant_data_by_row
+    
+    get_GPT_statistics = asyncio.create_task(get_GPT_statistics_task(credentials))
+    await get_GPT_statistics
+    return
 
 

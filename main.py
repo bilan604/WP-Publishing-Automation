@@ -1,9 +1,6 @@
-import os
-import openai
 import asyncio
 import pandas as pd
 from handling import get_handle_statistics
-import json
 
 
 async def main():
