@@ -77,20 +77,20 @@ def save_response(keyword, response):
     return
 
 def save_page_content(page_data, folder_name, file_name):
-                import os
-                folder_name = "wordpress"
-                file_name = "page_content.json"
-                folder_path = os.path.join(os.getcwd(), folder_name)
-                file_path = os.path.join(folder_path, file_name)
+    import os
+    folder_name = "wordpress"
+    file_name = "page_content.json"
+    folder_path = os.path.join(os.getcwd(), folder_name)
+    file_path = os.path.join(folder_path, file_name)
 
-                if not os.path.exists(folder_path):
-                    os.makedirs(folder_path)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
 
-                with open(file_path, "w") as file:
-                    json.dump(page_data, file)
+    with open(file_path, "w") as file:
+        json.dump(page_data, file)
 
-                print(f"Page content saved to '{file_path}'.")
-                return
+    print(f"Page content saved to '{file_path}'.")
+    return
 
 
 import re
