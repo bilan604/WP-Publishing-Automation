@@ -1380,9 +1380,8 @@ sentences = {}
 
 row_numbers = {}
 
-# keyword: set(relevant_data.id)
+# rowNo: Keyword: Set(str) 
 relevant_data_by_row = {}
-
 SIZE_LIMIT =  500
 
 

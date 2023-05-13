@@ -18,7 +18,7 @@ async def main():
     #clear()
     
     ######### Overide
-    blacklisted_urls = ["www.bloomberg.com"]
+    blacklisted_urls = ["www.bloomberg.com", "www.kinsta.com"]
 
     credentials = {}
     with open(".env", "r") as f:
