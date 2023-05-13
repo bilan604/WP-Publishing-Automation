@@ -1,3 +1,4 @@
+import os
 import re
 import json
 import openai
@@ -76,18 +77,20 @@ def save_response(keyword, response):
             f.write(resp + "\n")
     return
 
-def save_page_content(page_data, folder_name= "wordpress", file_name= "page_content.json"):
-    import os
-    folder_path = os.path.join(os.getcwd(), folder_name)
-    file_path = os.path.join(folder_path, file_name)
+def save_page_content(page_data, folder_name="page_contents", file_name= "page_content.json"):
+    do = False
+    for file in os.listdir():
+        if file.find(folder_name) == 0:
+            do = True
+            break
+    
+    if not do:
+        folder_name = "wordpress/" + folder_name
 
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-
-    with open(file_path, "w") as file:
+    with open(folder_name + "/" + file_name, "w") as file:
         json.dump(page_data, file)
 
-    print(f"Page content saved to '{file_path}'.")
+    print(f"Page content saved to '{folder_name + file_name}'.")
     return
 
 
@@ -96,7 +99,6 @@ def get_page_contents_string(s):
     s = re.sub("\n", " ", s)
     s = re.sub("( \.( )+?|\. | \.)", ". ", s)
     s = re.sub(" +?", " ", s)
-
     s = s.split("||||")
 
     cache = []
@@ -105,21 +107,26 @@ def get_page_contents_string(s):
         cache += si.split(".")
 
     cache = [c.strip() for c in cache]
-    s = [ci[0].upper()+ci[1:] for ci in cache if 6 < len(ci.split(" ")) < 50]
+    s = [ci[0].upper()+ci[1:] for ci in cache if 6 < len(ci.split(" ")) < 500]
     s = ". ".join(s)
     return s
         
 
-async def get_prompt_gpt3_task(keywords_string, page_contents):
+async def get_prompt_gpt3_task(keywords_string, page_contents, parsed_responses, depth=4):
     print("___________________________________\nPrompting")
 
     # For all pages for all keywords for a row
-    
+    if depth == 0:
+        print("Depth limit reached")
+        return parsed_responses
     page_contents_string = get_page_contents_string(page_contents)
-    if len(page_contents_string) < 100:
-        return []
+    if len(page_contents_string) < 250:
+        return parsed_responses
+    remaining = ""
     if len(page_contents_string) >= 2500:
+        remaining = page_contents_string[2500:]
         page_contents_string = page_contents_string[:2500]
+        
     
     prompt = f"The following text was extracted from a link from a Google search for the keywords \"" + keywords_string + "\". "
     prompt += f"Please extract and present as much empirical statistical information related to the keywords from the following text as possible:\n"
@@ -129,18 +136,22 @@ async def get_prompt_gpt3_task(keywords_string, page_contents):
     print(f" {prompt=} ")
     print("___________________")
 
+    response = ""
     try:
         get_gpt3_response = asyncio.create_task(get_openai_result(prompt))
         response = await get_gpt3_response
         print(f" {response=} ")
-        return response
-
     except:
         print("Error on OpenAI API call")
-        pass
-
-    return ""
-
+    
+    parsed_response = parse_response(response)
+    if parsed_response:
+        parsed_responses += parsed_response
+    if parsed_response and remaining:
+        get_next_resp = asyncio.create_task(get_prompt_gpt3_task(keywords_string, remaining, parsed_responses, depth - 1))
+        next_resp = await get_next_resp
+        return parsed_responses + next_resp
+    return parsed_responses
 
 
 async def get_prompt_section_task(keywords, content_type, section_type, content):
@@ -181,15 +192,15 @@ async def get_GPT_statistics_task(credentials={}):
             sentences_for_keyword = [sentences[str(sentence_id)] for sentence_id in keyword_data]
 
             gpt3_response = ""
-            get_prompt_gpt3 = asyncio.create_task(get_prompt_gpt3_task(keyword, sentences_for_keyword))
+            get_prompt_gpt3 = asyncio.create_task(get_prompt_gpt3_task(keyword, sentences_for_keyword, [], 4))
             gpt3_response = await get_prompt_gpt3
             page_content += gpt3_response
             
-            
-            keywords = []
-            for __keyword in row_numbers:
-                if row_numbers[__keyword] == row_numbers[keyword]:
-                    keywords.append(__keyword)
+            # Find keywords for prompting arg
+            if not keywords:
+                for __keyword in row_numbers:
+                    if row_numbers[__keyword] == row_numbers[keyword]:
+                        keywords.append(__keyword)
         
 
 
@@ -226,9 +237,9 @@ async def get_GPT_statistics_task(credentials={}):
 
         }
         base_url = "https://wordpress-923757-3513525.cloudwaysapps.com"
-        WP_url = base_url + "/wp-json/wp/v2/posts"
         
-        create_post(page_data, WP_url, True, credentials)
+        
+        create_post(page_data, base_url, True, credentials)
 
 
 

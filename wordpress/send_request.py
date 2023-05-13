@@ -8,28 +8,27 @@ import random
 from requests.auth import HTTPBasicAuth
 
 
-def create_post(prompt_data, wpBaseURL, postStatus, credentials):
+async def create_post(page_data, wpBaseURL, postStatus, credentials):
     #prompt_data: {"keywords": str, "rowNo": str, "content": [{"content_type": str, "link": str}]}
-    
     # with open
-    prompt_data = json.loads(prompt_data)
+    #page_data = json.loads(...)
 
     WP_url = wpBaseURL + "/wp-json/wp/v2/posts"
 
     auth = HTTPBasicAuth(credentials["WORDPRESS_USER"], credentials["WORDPRESS_PASS"])
 
     headers = {
-    "Accept": "application/json",
-    "Content-Type": "application/json"
+        "Accept": "application/json",
+        "Content-Type": "application/json"
     }
 
     payload = { 
         "status":postStatus,
-        "title": prompt_data["content"]["title"],
-        "intro": prompt_data["content"]["intro"],
-        "statistics_in_groups": prompt_data["content"]["statistics_in_groups"],
-        "reference_info": prompt_data["content"]["reference_info"],
-        "conclusion": prompt_data["content"]["conclusion"],
+        "title": page_data["content"]["title"],
+        "intro": page_data["content"]["intro"],
+        "statistics_in_groups": page_data["content"]["statistics_in_groups"],
+        "reference_info": page_data["content"]["reference_info"],
+        "conclusion": page_data["content"]["conclusion"],
     }
 
     response = requests.request(
@@ -43,5 +42,3 @@ def create_post(prompt_data, wpBaseURL, postStatus, credentials):
     print(response)
     return
 
-
-post_creator("https://jsonplaceholder.typicode.com/posts/5", "<BASE_URL>", "la", "en", "publish")
