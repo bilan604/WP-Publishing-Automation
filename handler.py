@@ -371,13 +371,7 @@ testing_serp_response = {
           "detected_extensions": {
             "rating": 8.9,
             "reviews": 982
-          },
-          "extensions": [
-            "Valutazione: 8,9/10",
-            "‎982 recensioni",
-            "‎Gratis",
-            "‎Intrattenimento   Le recensioni non sono verificate dalla Ricerca Google"
-          ]
+          }
         }
       },
       "block_position": 9,
@@ -610,11 +604,7 @@ testing_serp_response = {
           "detected_extensions": {
             "rating": 3.7,
             "reviews": 3
-          },
-          "extensions": [
-            "Valutazione: 3,7",
-            "‎3 voti   Le recensioni non sono verificate dalla Ricerca Google"
-          ]
+          }
         }
       },
       "date": "16 ott 2022",
@@ -1409,8 +1399,6 @@ async def get_api_result(api_key, serps_to_check, query):
 
     api_result = requests.get('https://api.valueserp.com/search', params)
     return api_result.json()
-
-
 
 def filter_blacklisted(organic_results, blacklisted_urls):
     blacklisted_urls = set(blacklisted_urls)

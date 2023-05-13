@@ -10,21 +10,7 @@ relevent_data_by_row = {}
 sentences = {}
 
 
-async def get_openai_result(prompt):
-    KEY = "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"
-    openai.api_key = KEY
-    
-    if type(prompt) != str:
-        return
-    if len(prompt) == 0:
-        return "Empty Query Recieved"
-
-    response = openai.Completion.create(model="text-davinci-003",
-                                        prompt=prompt,
-                                        max_tokens=1500)
-    return response.choices[0].text
-
-
+# Unused
 def filter_content(keywords, row_sentences):
     # max 300 for 2500 prompt content/context (Not including response and 390 existing prompt)
     row_sentences = [s for s in row_sentences if 10 < len(s) < 300]
@@ -49,70 +35,99 @@ def filter_content(keywords, row_sentences):
     return row_sentences
 
 
+async def get_openai_result(prompt):
+    KEY = "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"
+    openai.api_key = KEY
+    
+    if type(prompt) != str:
+        return
+    if len(prompt) == 0:
+        return "Empty Query Recieved"
+
+    response = openai.Completion.create(model="text-davinci-003",
+                                        prompt=prompt,
+                                        max_tokens=1000)
+    return response.choices[0].text
+
+
 def parse_response(response):
     if not response:
         return []
+    for var in ("response = ", "Response = ", "response=", "Response="):
+        if var in response:
+            response = response.split(var)[1]
+            break
         
-    if "response = " in response:
-        response = response.split("response = ")[1]
-
-    add = False
-    currString = ''
-    statistics = []
-    for letter in response:
-        if letter == '\"':
-            if not add:
-                add = True
-            else:
-                add = False
-                statistics += [re.sub("\n", " ", currString)]
-                currString = ''
-        else:
-            if add:
-                currString += letter
-
-    return statistics
+    if "[" in response:
+        response = response.split("[")[1]
+    if "]" in response:
+        response = response.split("]")[0]
+    
+    response = response.split(",")
+    response = [r.strip() for r in response]
+    return response
 
 
 def save_response(keyword, response):
     response = parse_response(response)
-    with open("responses.txt", "w") as f:
+    with open("responses.txt", "a") as f:
         f.write("KEYWORD:" + keyword + "\n")
         for resp in response:
             f.write(resp + "\n")
+    return
+
+
+import re
+def get_page_contents_string(s):
+
+    s = "||||".join(s)
+    s = re.sub("\n", " ", s)
+    s = re.sub("( \.( )+?|\. | \.)", ". ", s)
+    s = re.sub(" +?", " ", s)
+
+    s = s.split("||||")
+
+    cache = []
+    for si in s:
+
+        cache += si.split(".")
+
+    cache = [c.strip() for c in cache]
+    s = [ci[0].upper()+ci[1:] for ci in cache if 6 < len(ci.split(" ")) < 50]
+    s = ". ".join(s)
+    return s
         
 
-
-        
-
-async def get_prompt_gpt3_task(keywords, page_contents):
+async def get_prompt_gpt3_task(keywords_string, page_contents):
     print("___________________________________\nPrompting")
-    print(f" {keywords=} ")
-    print(f" {page_contents} ")
 
     # For all pages for all keywords for a row
-    page_contents_string = "\n".join(page_contents)
-
-
+    
+    page_contents_string = get_page_contents_string(page_contents)
     if len(page_contents_string) < 100:
         return []
-    if len(page_contents_string) >= 2200:
-        page_contents_string[:2200]
+    if len(page_contents_string) >= 2500:
+        page_contents_string = page_contents_string[:2500]
     
-    keywords_string = ",".join(keywords)
     prompt = f"The following text was extracted from a link from a Google search for the keywords \"" + keywords_string + "\". "
     prompt += f"Please extract and present as much empirical statistical information related to the keywords from the following text as possible:\n"
     prompt += "\"\"\"\n" + page_contents_string+ "\n\"\"\"\n"
     prompt += "Format your response as a list of whole sentences separated by commas\n"
-    prompt += "i.e.\nresponse = [\"52% of brands share webinar leads with their sales teams\", \"Over half consider the quality of leads from webinars to be 'above average'\"]\n"
+    prompt += "i.e.\nresponse = [\"Webinars receive 47% of their views up to ten days after the initial event\", \"The webinar market is projected to reach 800 million by 2023\"]\n"
     print(f" {prompt=} ")
+    print("___________________")
 
-    get_gpt3_response = asyncio.create_task(get_openai_result(prompt))
-    response = await get_gpt3_response
+    try:
+        get_gpt3_response = asyncio.create_task(get_openai_result(prompt))
+        response = await get_gpt3_response
+        print(f" {response=} ")
+        return response
 
-    print(f" {response=} ")
+    except:
+        print("Error on OpenAI API call")
+        pass
 
-    return response
+    return ""
 
 
 async def get_GPT_statistics_task(credentials={}):
@@ -133,16 +148,12 @@ async def get_GPT_statistics_task(credentials={}):
             keyword_data = relevant_data_by_row[row_number][keyword]
             keyword_data = list(set(keyword_data))
             sentences_for_keyword = [sentences[str(sentence_id)] for sentence_id in keyword_data]
-            
-            print(sentences_for_keyword)
-            get_prompt_gpt3 = asyncio.create_task(get_prompt_gpt3_task(keyword, sentences_for_keyword))
-            try:
-                gpt3_response = await get_prompt_gpt3
-                save_response(keyword, gpt3_response)
-                print(f" {gpt3_response=} ")
-            except:
-                print("Error on GPT3 prompting")
 
+            gpt3_response = ""
+            get_prompt_gpt3 = asyncio.create_task(get_prompt_gpt3_task(keyword, sentences_for_keyword))
+            gpt3_response = await get_prompt_gpt3
+            
+            save_response(keyword, gpt3_response)
 
     return
 
