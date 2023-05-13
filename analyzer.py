@@ -76,10 +76,8 @@ def save_response(keyword, response):
             f.write(resp + "\n")
     return
 
-def save_page_content(page_data, folder_name, file_name):
+def save_page_content(page_data, folder_name= "wordpress", file_name= "page_content.json"):
     import os
-    folder_name = "wordpress"
-    file_name = "page_content.json"
     folder_path = os.path.join(os.getcwd(), folder_name)
     file_path = os.path.join(folder_path, file_name)
 
@@ -93,9 +91,7 @@ def save_page_content(page_data, folder_name, file_name):
     return
 
 
-import re
 def get_page_contents_string(s):
-
     s = "||||".join(s)
     s = re.sub("\n", " ", s)
     s = re.sub("( \.( )+?|\. | \.)", ". ", s)
@@ -195,12 +191,23 @@ async def get_GPT_statistics_task(credentials={}):
                 if row_numbers[__keyword] == row_numbers[keyword]:
                     keywords.append(__keyword)
         
-        intro_content = get_prompt_section_task(keywords, "content", "intro", page_content)
-        conclusion_content = get_prompt_section_task(keywords, "content", "conclusion", page_content)
-        statistics_content = asyncio.create_task(get_prompt_section_task(keywords, "content", "statistics in groups", page_content))
-        reference_content = get_prompt_section_task(keywords, "content", "reference info", page_content)
-        title_content = get_prompt_section_task(keywords, "content", "title", page_content)
-        
+
+
+        get_intro_content = asyncio.create_task(get_prompt_section_task(keywords, "content", "intro", page_content))
+        intro_content = await get_intro_content
+
+        get_statistics_content = asyncio.create_task(get_prompt_section_task(keywords, "content", "statistics in groups", page_content))
+        statistics_content = await get_statistics_content
+
+        get_reference_content = asyncio.create_task(get_prompt_section_task(keywords, "content", "reference info", page_content))
+        reference_content = await get_reference_content
+
+        get_conclusion_content = asyncio.create_task(get_prompt_section_task(keywords, "content", "conclusion", page_content))
+        conclusion_content = await get_conclusion_content
+
+        get_title_content = asyncio.create_task(get_prompt_section_task(keywords, "content", "title", page_content))
+        title_content = await get_title_content
+
         page_data = {
             "title_content": title_content,
             "intro_content": intro_content,
@@ -208,7 +215,9 @@ async def get_GPT_statistics_task(credentials={}):
             "reference_content": reference_content,
             "conclusion_content": conclusion_content
         }
+
         save_page_content(page_data)
+        
         keywords_string = ", ".join(keywords)
         post_data = {
             "link": "https://wordpress-923757-3513525.cloudwaysapps.com/",
@@ -216,7 +225,8 @@ async def get_GPT_statistics_task(credentials={}):
             "content": page_data
 
         }
-        WP_url = ""
+        base_url = "https://wordpress-923757-3513525.cloudwaysapps.com"
+        WP_url = base_url + "/wp-json/wp/v2/posts"
         
         create_post(page_data, WP_url, True, credentials)
 
@@ -224,4 +234,4 @@ async def get_GPT_statistics_task(credentials={}):
 
 
 
-asyncio.run(get_GPT_statistics_task())
+#asyncio.run(get_GPT_statistics_task())
