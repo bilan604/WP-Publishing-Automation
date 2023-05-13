@@ -2,9 +2,9 @@ import re
 import json
 import openai
 import asyncio
+import string
 
 
-responses = {}
 row_numbers = {}
 relevent_data_by_row = {}
 sentences = {}
@@ -24,28 +24,6 @@ async def get_openai_result(prompt):
                                         max_tokens=1500)
     return response.choices[0].text
 
-
-async def get_prompt_gpt3_task(keywords, page_contents):
-    # For all pages for all keywords for a row
-    page_contents_string = "\n".join(page_contents)
-    if len(page_contents_string) < 250:
-        return []
-    if len(page_contents_string) >= 2200:
-        page_contents_string[:2200]
-    
-    keywords_string = ",".join(keywords)
-    prompt = f"The following text was extracted from a link from a Google search for the keywords \"" + keywords_string + "\". "
-    prompt += f"Please extract and present as much empirical statistical information related to the keywords from the following text as possible:\n"
-    prompt += "\"\"\"\n" + page_contents_string+ "\n\"\"\"\n"
-    prompt += "Format your response as a list of whole sentences separated by commas\n"
-    prompt += "i.e.\nresponse = [\"52% of brands share webinar leads with their sales teams\", \"Over half consider the quality of leads from webinars to be 'above average'\"]\n"
-    print(f" {prompt=} ")
-
-    get_gpt3_response = asyncio.create_task(get_openai_result(prompt))
-    response = await get_gpt3_response
-
-    print(f" {response=} ")
-    return response
 
 def filter_content(keywords, row_sentences):
     # max 300 for 2500 prompt content/context (Not including response and 390 existing prompt)
@@ -71,56 +49,104 @@ def filter_content(keywords, row_sentences):
     return row_sentences
 
 
+def parse_response(response):
+    if not response:
+        return []
+        
+    if "response = " in response:
+        response = response.split("response = ")[1]
 
-async def get_GPT_statistics_task():
-    
-    # for all keywords of all rows which have been loaded to the relevant_data_by_row, row_numbers, and sentences .json files
-    with open("row_numbers.json", "r") as row_numbers_file:
-        global row_numbers
-        row_numbers = json.load(row_numbers_file)
-    with open("relevant_data_by_row.json", "r") as relevent_data_by_row_file:
-        global relevent_data_by_row
-        relevent_data_by_row = json.load(relevent_data_by_row_file)
-    with open("sentences.json", "r") as sentences_file:
-        global sentences
-        sentences = json.load(sentences_file)
-    print(row_numbers)
-    print(relevent_data_by_row)
-    print(type(sentences))
-    
-    rows = {}
-    for keyword in row_numbers:
-        row_number = row_numbers[keyword]
-        if row_number not in rows:
-            rows[row_number] = []
-        rows[row_number] += [keyword]
-    
-    for row_number in rows:
-        sentence_ids = relevent_data_by_row[str(row_number)]
-        # A list of sentences related to row_number
-        row_sentences = [sentences[str(id)] for id in sentence_ids]
-        row_sentences = filter_content(rows[row_number], row_sentences)
-        print(row_number, row_sentences)
+    add = False
+    currString = ''
+    statistics = []
+    for letter in response:
+        if letter == '\"':
+            if not add:
+                add = True
+            else:
+                add = False
+                statistics += [re.sub("\n", " ", currString)]
+                currString = ''
+        else:
+            if add:
+                currString += letter
+
+    return statistics
+
+
+def save_response(keyword, response):
+    response = parse_response(response)
+    with open("responses.txt", "w") as f:
+        f.write("KEYWORD:" + keyword + "\n")
+        for resp in response:
+            f.write(resp + "\n")
+        
+
 
         
-        try:
-            get_prompt_gpt3 = asyncio.create_task(get_prompt_gpt3_task(rows[row_number], row_sentences))
-            prompt_gpt3_response = await get_prompt_gpt3
-            print(f" {prompt_gpt3_response=} ")
 
-            with open("responses.txt", "w") as f:
-                f.write(str(row_number) + "\n")
-                f.write(prompt_gpt3_response)
-        except:
+async def get_prompt_gpt3_task(keywords, page_contents):
+    print("___________________________________\nPrompting")
+    print(f" {keywords=} ")
+    print(f" {page_contents} ")
+
+    # For all pages for all keywords for a row
+    page_contents_string = "\n".join(page_contents)
+
+
+    if len(page_contents_string) < 100:
+        return []
+    if len(page_contents_string) >= 2200:
+        page_contents_string[:2200]
+    
+    keywords_string = ",".join(keywords)
+    prompt = f"The following text was extracted from a link from a Google search for the keywords \"" + keywords_string + "\". "
+    prompt += f"Please extract and present as much empirical statistical information related to the keywords from the following text as possible:\n"
+    prompt += "\"\"\"\n" + page_contents_string+ "\n\"\"\"\n"
+    prompt += "Format your response as a list of whole sentences separated by commas\n"
+    prompt += "i.e.\nresponse = [\"52% of brands share webinar leads with their sales teams\", \"Over half consider the quality of leads from webinars to be 'above average'\"]\n"
+    print(f" {prompt=} ")
+
+    get_gpt3_response = asyncio.create_task(get_openai_result(prompt))
+    response = await get_gpt3_response
+
+    print(f" {response=} ")
+
+    return response
+
+
+async def get_GPT_statistics_task(credentials={}):
+    
+    # for all keywords of all rows which have been loaded to the relevant_data_by_row, row_numbers, and sentences .json files
+    with open("data_container/relevant_data_by_row.json", "r") as relevent_data_by_row_file:
+        global relevent_data_by_row
+        relevant_data_by_row = json.load(relevent_data_by_row_file)
+    with open("data_container/sentences.json", "r") as sentences_file:
+        global sentences
+        sentences = json.load(sentences_file)
+    with open("data_container/row_numbers.json", "r") as row_numbers_file:
+        global row_numbers
+        row_numbers = json.load(row_numbers_file)
+    
+    for row_number in relevant_data_by_row:
+        for keyword in relevant_data_by_row[row_number]:
+            keyword_data = relevant_data_by_row[row_number][keyword]
+            keyword_data = list(set(keyword_data))
+            sentences_for_keyword = [sentences[str(sentence_id)] for sentence_id in keyword_data]
+            
+            print(sentences_for_keyword)
+            get_prompt_gpt3 = asyncio.create_task(get_prompt_gpt3_task(keyword, sentences_for_keyword))
             try:
-                with open("responses.txt", "w") as f:
-                    f.write(prompt_gpt3_response)
+                gpt3_response = await get_prompt_gpt3
+                save_response(keyword, gpt3_response)
+                print(f" {gpt3_response=} ")
             except:
-                print("Invalid response format")
-                pass
+                print("Error on GPT3 prompting")
 
-    return prompt_gpt3_response
+
+    return
+
+
 
 
 asyncio.run(get_GPT_statistics_task())
-    

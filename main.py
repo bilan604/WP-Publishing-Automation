@@ -1,10 +1,20 @@
 import asyncio
 import pandas as pd
-from handling import get_handle_statistics
+from handler import get_handle_statistics
 
 
 async def main():
 
+    """
+    ######### clear
+    import json
+    with open("data_container/relevant_data_by_row.json", "w") as f1:
+        json.dump({}, f1)
+    with open("data_container/sentences.json", "w") as f2:
+        json.dump({}, f2)        
+    with open("data_container/row_numbers.json", "w") as f3:
+        json.dump({}, f3)
+    """
     credentials = {}
     with open(".env", "r") as f:
         lines = f.readlines()
@@ -13,7 +23,6 @@ async def main():
             credentials[key] = value
     
     df = pd.read_csv("input.csv")
-
     queries = {}
     columns = {colName: list(df[colName]) for colName in df.columns}
     for i in range(len(df)):
@@ -28,8 +37,6 @@ async def main():
     get_statistics = asyncio.create_task(get_handle_statistics(queries, blacklisted_urls, credentials))
     statistics = await get_statistics
     return statistics
-
-
 
 
 if __name__ == '__main__':
