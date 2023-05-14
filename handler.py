@@ -47,48 +47,42 @@ async def get_resp_text_task(link):
 
 async def get_update_by_keywords_task(keyword, all_text_tags, credentials):
     print("Searching for keywords from link given search query", keyword)
-
-    # Get sentences from the text tags and filter them
-    __sentences = []
-    for i, text_tag in enumerate(all_text_tags):
-        if len(text_tag) > 60:
-            for item in text_tag.lower().split("."):
-                sentence = re.sub("[^a-zA-Z|0-9|%|.|'| ]", " ", item)
-                __sentences.append(sentence)
-            continue
+    def __get_sentences(all_text_tags):
+        # Get sentences from the text tags and filter them
+        __sentences = []
+        for i, text_tag in enumerate(all_text_tags):
+            if len(text_tag) > 60:
+                for item in text_tag.lower().split("."):
+                    sentence = re.sub("[^a-zA-Z|0-9|%|.|'| ]", " ", item)
+                    __sentences.append(sentence)
+                continue
+            
+            sentence = re.sub("[^a-zA-Z|0-9|%|.|'| ]", " ", text_tag.lower())
+            __sentences.append(sentence)
         
-        sentence = re.sub("[^a-zA-Z|0-9|%|.|'| ]", " ", text_tag.lower())
-        __sentences.append(sentence)
-    
-    # a list of sentences
-    __sentences = [filter_spacing(sentence) for sentence in __sentences]
-    # Var for when data is stored already and the python file is run again
-    # Prevents rewrites, but quite unlikely
-    existing_sentences = 0
+        # a list of sentences
+        __sentences = [filter_spacing(sentence) for sentence in __sentences]
+        return __sentences
 
     m = 3
     aspect = credentials["aspect"]
-    for sentence in __sentences:
+    for sentence in __get_sentences(all_text_tags):
         # List of letters in the sentence
         sentenceLst = sentence.split(" ")
-        for gap_size in range(m, 0, -1):
+        # set to range(m, 0, -1) for unigrams
+        for gap_size in range(m, 1, -1):
             for i in range(len(sentenceLst)-gap_size+1):
                 token = " ".join(sentenceLst[i:i+gap_size])
-                
                 # Exists as a keyword
-                if token in row_numbers:
-                    if aspect not in row_numbers[token]:
-                        continue
-                    
-                    print("sentence found via token", token)
-                    # only store sentences with a matching token
-                    id = len(sentences) + existing_sentences
-                    if sentence not in sentences:
-                        sentences[id] = sentence
-                    
-                    # Add the sentence id to the row's keyword
-                    relevant_data_by_row[row_numbers[token][aspect]][token].add(id)
-                    
+                if token in row_numbers and aspect in row_numbers[token]:
+                    # new key always
+                    id = str(len(sentences))
+                    # store it
+                    sentences[id] = sentence
+                    # get the row in the csv for the token and aspect (category/topic)
+                    row_key = row_numbers[token][aspect]
+                    # Add the sentence id to the keyword + aspect pair
+                    relevant_data_by_row[row_key][token].add(id)
     return
 
 async def get_data_task(keyword, link, credentials):
@@ -122,15 +116,6 @@ async def get_keyword_sentences_task(keyword, organic_results, credentials):
         print(f"Accessing {link=}")
         get_data = asyncio.create_task(get_data_task(keyword, link, credentials))
         await get_data
-        print("\n\nkeyword", keyword)
-        print("\n\nsentences", sentences)
-        print(f" {relevant_data_by_row=} ")
-        ###################################### view
-        for row in relevant_data_by_row:
-            for keyword in relevant_data_by_row[row]:
-                sentence_count = len(relevant_data_by_row[row][keyword])
-                if sentence_count > 0:
-                    print(f" {keyword}: {sentence_count} sentences")
         """
         dd = listify(relevant_data_by_row)
         print("len(dd)", len(dd))
@@ -171,7 +156,6 @@ async def get_relevant_data_by_row_task(keywords, num_pages, blacklisted_urls, c
 
         # Safety precaution for saving
         dd = listify(relevant_data_by_row)
-        
         save_relevant_data(dd)
         save_sentences(sentences)
         save_row_numbers(row_numbers)
@@ -198,18 +182,24 @@ async def get_handle_statistics(queries, blacklisted_urls, credentials):
         row = str(rowNo)
         aspect, filtered_keywords = get_filtered_keywords(keywords)
         credentials["aspect"] = aspect
-        print(f" {filtered_keywords=} ")
+        print(f" {aspect} {filtered_keywords=} ")
         for filtered_keyword in filtered_keywords:
             
             if not filtered_keyword:
                 continue
+            
+            # Memo
             if filtered_keyword not in row_numbers:
                 row_numbers[filtered_keyword] = {}
-                row_numbers[filtered_keyword][aspect] = row
-                # keyword: aspect: set(sentence_id)
-                # i.e. safety policy: alphabet: set({1,2,50,7})
+            
+            # keyword: aspect: set(sentence_id)
+            # i.e. safety policy: alphabet: set({1,2,50,7})
+            row_numbers[filtered_keyword][aspect] = row
+            
+            # Init
             if row not in relevant_data_by_row:
                 relevant_data_by_row[row] = {}
+            # Just init
             if filtered_keyword not in relevant_data_by_row[row]:
                 relevant_data_by_row[row][filtered_keyword] = set({})
 

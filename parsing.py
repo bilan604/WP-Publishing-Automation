@@ -34,8 +34,11 @@ def get_filtered_keywords(keywords):
     aspect = ""
     for word in dd:
         if dd[word] == len(keywords):
-            aspect = word
-            break
+            if not aspect:
+                aspect = word
+            else:
+                aspect += " " + word
+    aspect = re.sub("[^a-zA-Z| |\(|\)]", "", aspect)
     for keyword in keywords:
         filtered_keyword = to_key(keyword)    
         filtered_keyword = " ".join([word for word in filtered_keyword.split(" ") if dd[word] < len(keywords)])

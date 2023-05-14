@@ -10,7 +10,7 @@ def save_row_numbers(data):
         json.dump(data, f)
 
 def save_relevant_data(data):
-    with open("data_helper_folder/relevant_data_by_row.json", "w") as f:
+    with open("data_container/relevant_data_by_row.json", "w") as f:
         json.dump(data, f)
 
     return

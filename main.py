@@ -1,6 +1,6 @@
 import asyncio
 import pandas as pd
-from handler import get_handle_statistics
+
 
 def clear():
     import json
@@ -40,7 +40,7 @@ async def main():
             "results to check": columns["results to check"][i],
             "status": columns["status"][i]
         }
-    
+    from handler import get_handle_statistics
     get_statistics = asyncio.create_task(get_handle_statistics(queries, blacklisted_urls, credentials))
     await get_statistics
     return 
