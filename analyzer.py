@@ -1,10 +1,12 @@
 import os
 import re
+import time
 import json
 import openai
 import asyncio
-from wordpress.send_request import create_post
-import time
+from requesting.send_request import create_post
+
+
 
 row_numbers = {}
 relevent_data_by_row = {}
@@ -235,18 +237,6 @@ async def get_GPT_statistics_task(credentials={}):
         save_page_content(page_data)
         
         keywords_string = ", ".join(keywords)
-        
-        
-# Testing overrides
-"""
-lst = [
-    'when it comes to additional functionalities customers prioritize flexible viewing experiences. webinar marketing statistics further reveal that besides being able to view it at any given time viewers also value receiving slides as a part of a presentation downloading additional resources and the watch later functionality.',
-    'research shows that 58% of marketers use webinars as a promotion tool. studies show that between 2% and 5% of webinar attendees eventually make a purchase at the end of the webinar.',
-    'industries use webinars for generating leads. so if you have concerns about meeting demand goals just consider these webinar lead generation statistics. a total of 66% of businesses say their sales teams prioritize leads coming from webinars while 72% confirm a direct influence of webinars on pipeline and revenue. a further 78% say they help lower the cost per lead.',
-    'surveys show that b2b marketers rely more on webinars and other virtual events of sorts more than their b2c counterparts. 67% of b2b companies have hosted webinars in the past year as opposed to 39% of b2c businesses. b2b webinar statistics further reveal that b2b companies ranked webinars online courses virtual events and blog posts short articles tied at 22% as the best performing content marketing channels.',
-    'digital activity peaked after the covid 19 outbreak and remains at all time high levels as professionals embrace a hybrid system of online and in person workflow. marketers have been racing to find the best practices for webinars to cut the noise and stand out among the crowd. webinar statistics demonstrate that most marketers choose to improve audience interaction via polls questions and votes followed by simplicity and ease of use 28% and flexible formats 27% .',
-    'the percentage of marketers who run up to 150 webinars per year is satisfactory and amounts to 29%. 80% of organizations hosting training webinars produce as many as 100 webinars per year while a total of 93% of webinars for continuing education are organized 150 times per year according to a webinar benchmarks report.'
-]
-"""
+
 #asyncio.run(get_GPT_statistics_task())
 #asyncio.run(generate_page_data("webinar", lst))

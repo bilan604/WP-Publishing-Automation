@@ -4,14 +4,15 @@
 
 import requests
 import json
-import random
+import asyncio
 from requests.auth import HTTPBasicAuth
 
 
 async def create_post(page_data, wpBaseURL, postStatus, credentials):
     #prompt_data: {"keywords": str, "rowNo": str, "content": [{"content_type": str, "link": str}]}
-    # with open
-    #page_data = json.loads(...)
+    
+    ########## Override
+    wpBaseURL = "https://wordpress-923757-3513525.cloudwaysapps.com/"
 
     WP_url = wpBaseURL + "/wp-json/wp/v2/posts"
 
@@ -31,6 +32,10 @@ async def create_post(page_data, wpBaseURL, postStatus, credentials):
         "conclusion": page_data["content"]["conclusion"],
     }
 
+    print(payload)
+    print("STOPPING\n\n---------------------------")
+    import time
+    time.sleep(15000)
     response = requests.request(
         "POST",
         WP_url,
@@ -42,3 +47,19 @@ async def create_post(page_data, wpBaseURL, postStatus, credentials):
     print(response)
     return
 
+async def fetch_data(link, params):
+    response = requests.get(link, params)
+    return response
+
+async def get_api_result(api_key, num_pages, query):
+    params = {
+        'api_key': api_key,
+        'q': query,
+        "page": 1,
+        "max_page": 1,
+        "num": num_pages,
+        
+    }
+    get_response = asyncio.create_task(fetch_data("https://api.valueserp.com/search", params))
+    response = await get_response
+    return response

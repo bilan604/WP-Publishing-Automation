@@ -13,8 +13,8 @@ def clear():
 
 
 async def main():
-
-    # clears saved data
+    ##############################
+    #clears saved data
     #clear()
     
     ######### Overide
@@ -27,21 +27,22 @@ async def main():
             key, value = row.split("=")
             credentials[key] = value
     
-    df = pd.read_csv("input.csv")
+    df = pd.read_csv("Statistics Pages Automation - Sheet1.csv")
     queries = {}
     columns = {colName: list(df[colName]) for colName in df.columns}
-    for i in range(len(df)):
+
+    ################################################
+    ################################################
+    ################################################
+    for i in range(3):
         queries[i] = {
-            "Keywords": columns["Keywords"][i],
-            "SERPNumber": columns["SERPNumber"][i],
-            "KeywordStatuses": columns["KeywordStatuses"][i]
+            "keywords": columns["keywords"][i],
+            "results to check": columns["results to check"][i],
+            "status": columns["status"][i]
         }
     
     get_statistics = asyncio.create_task(get_handle_statistics(queries, blacklisted_urls, credentials))
-    statistics = await get_statistics
-    
-
-    
+    await get_statistics
     return 
 
 if __name__ == '__main__':
