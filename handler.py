@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 from parsing import *
 from analyzer import get_GPT_statistics_task
 import time
+from test import *
+from wordpress.send_request import *
 
 testing_serp_response = {
   "request_info": {
@@ -1573,6 +1575,14 @@ async def get_handle_statistics(queries, blacklisted_urls, credentials):
     # Prompting
     get_GPT_statistics = asyncio.create_task(get_GPT_statistics_task(credentials))
     await get_GPT_statistics
+
+    pages_contents = load_data()
+    for page_contents in pages_contents:
+        baseUrl = None
+        create_post_task = asyncio.create_task(create_post(page_contents, baseUrl, True, credentials))
+        await create_post_task
+        
+
     return
 
 

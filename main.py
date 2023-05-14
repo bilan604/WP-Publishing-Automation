@@ -39,8 +39,10 @@ async def main():
     
     get_statistics = asyncio.create_task(get_handle_statistics(queries, blacklisted_urls, credentials))
     statistics = await get_statistics
-    return statistics
+    
 
+    
+    return 
 
 if __name__ == '__main__':
     asyncio.run(main())
