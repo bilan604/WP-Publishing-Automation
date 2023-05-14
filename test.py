@@ -18,6 +18,9 @@ def load_data(file_path):
                 result.append(data)
     return result
 
+
+
+
 """
 # Example usage
 
@@ -39,3 +42,18 @@ loaded_data = load_data(file_path)
 for data in loaded_data:
     print(data)
 """
+
+def get_sentence_count():
+    with open("data_container/sentences.json", "r") as f:
+        sentences = json.load(f)
+        print(sentences)
+    return len(sentences)
+
+
+
+def test():
+    dd = {"0": "important dates in apple history", "1": "test"}
+    with open("data_container/sentences.json", "w") as f:
+        json.dump(dd, f)
+
+print(test())

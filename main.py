@@ -18,7 +18,7 @@ async def main():
     #clear()
     
     ######### Overide
-    blacklisted_urls = ["www.bloomberg.com", "www.kinsta.com"]
+    blacklisted_urls = ["www.bloomberg.com", "www.kinsta.com", "www.nasdaq.com"]
 
     credentials = {}
     with open(".env", "r") as f:
@@ -34,7 +34,7 @@ async def main():
     ################################################
     ################################################
     ################################################
-    for i in range(3):
+    for i in range(25):
         queries[i] = {
             "keywords": columns["keywords"][i],
             "results to check": columns["results to check"][i],

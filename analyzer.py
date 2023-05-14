@@ -126,6 +126,9 @@ def get_page_contents_string(lst):
 
 ##################################
 async def get_content_task(keywords_string, page_contents):
+    print("REACHED PROMPT")
+    print(keywords_string, page_contents)
+    time.sleep(60000)
     print("___________________________________\nPrompting")
     
     # For all pages for all keywords for a row
@@ -134,7 +137,6 @@ async def get_content_task(keywords_string, page_contents):
     curr = []
     for i, content in enumerate(page_contents):
         if total_length + len(content) >= 2500:
-            print(curr)
             page_contents_string = "\n".join(curr)
 
             prompt = f"The following text was extracted from a link from a Google search for the keywords \"{keywords_string}\". "
