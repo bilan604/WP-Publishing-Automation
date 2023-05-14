@@ -18,6 +18,7 @@ def load_data(file_path):
                 result.append(data)
     return result
 
+"""
 # Example usage
 
 # Save multiple dictionaries in append manner
@@ -37,3 +38,4 @@ loaded_data = load_data(file_path)
 # Use the loaded data
 for data in loaded_data:
     print(data)
+"""
