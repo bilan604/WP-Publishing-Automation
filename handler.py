@@ -63,10 +63,13 @@ async def get_update_by_keywords_task(keyword, all_text_tags, credentials):
         # a list of sentences
         __sentences = [filter_spacing(sentence) for sentence in __sentences]
         return __sentences
+    
 
     m = 3
     aspect = credentials["aspect"]
-    for sentence in __get_sentences(all_text_tags):
+    lst = [re.sub("[^a-zA-Z|0-9|%|.|'| ]", " ", item) for item in all_text_tags]
+    lst = [li for li in lst if 6 < len(li.split(" ")) < 65]
+    for sentence in lst:  # __get_sentences(all_text_tags)
         # List of letters in the sentence
         sentenceLst = sentence.split(" ")
         # set to range(m, 0, -1) for unigrams
@@ -176,7 +179,7 @@ async def get_handle_statistics(queries, blacklisted_urls, credentials):
             data_container[file] = existing_data
             print("TEST1", existing_data)
     """     
-
+    print(credentials)
     for rowNo in queries:
         keywords = queries[rowNo]["keywords"]
         row = str(rowNo)

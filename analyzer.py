@@ -125,10 +125,9 @@ def get_page_contents_string(lst):
 
 
 ##################################
-async def get_content_task(keywords_string, page_contents):
+async def __get_content_task(keywords_string, page_contents):
     print("REACHED PROMPT")
-    print(keywords_string, page_contents)
-    time.sleep(60000)
+    
     print("___________________________________\nPrompting")
     
     # For all pages for all keywords for a row
@@ -161,6 +160,18 @@ async def get_content_task(keywords_string, page_contents):
             
     return parsed_responses
 
+async def get_content_task(about, page_contents):
+    # about: str for prompt: any
+    s = "\n".join(page_contents)
+    print("REACHED PROMPT")
+    prompt1 = "Please note the following list of sentences related to the keyword \"" + about + "\":"
+    prompt1 += "\"\"\""
+    prompt1 += s
+    prompt1 += "\"\"\" "
+    openai_response_task = asyncio.create_task(get_openai_result(prompt1))
+    openai_response = await openai_response_task
+    print("\n\nOpenAI RESPONSE:", openai_response)
+    return
 
 async def get_prompt_section_task(keywords, section_type, content):
     print(f" {keywords=} {section_type} {content} ")
@@ -217,28 +228,41 @@ async def get_GPT_statistics_task(credentials={}):
         global row_numbers
         row_numbers = json.load(row_numbers_file)
     
-    for row_number in relevant_data_by_row:
-        page_content = []
-        keywords = []
-        # For each keyword, generate page content and add it to page contents
-        for keyword in relevant_data_by_row[row_number]:
-            keyword_data = relevant_data_by_row[row_number][keyword]
-            keyword_data = list(set(keyword_data))
-            sentences_for_keyword = [sentences[str(sentence_id)] for sentence_id in keyword_data]
-            
-            get_prompt_gpt3 = asyncio.create_task(get_content_task(keyword, sentences_for_keyword))
-            filtered_content = await get_prompt_gpt3
-            page_content += filtered_content
-            
-            keywords = get_keywords_from_keyword(keyword)
-        
 
-        page_data_task = asyncio.create_task(generate_page_data(keywords, page_content))
-        page_data = await page_data_task
+    page_data = {}
+    for topic in row_numbers:
+        for aspect in row_numbers[topic]:
+            row = row_numbers[topic][aspect]
+            
+            for id in relevant_data_by_row[row][topic]:
+                print(row, sentences[id])
+                if row not in page_data:
+                    page_data[row] = []
+                page_data[row] += [sentences[id]]
+    """
+    # VIEWING
+    print(page_data)
+    for key in page_data:
+        print(key, len(page_data[key]), page_data[key][:2])
+    """
+    for row in page_data:
+        asyncio.create_task(get_content_task("Apple", page_data[row]))
 
-        save_page_content(page_data)
+    """
+    for keyword in keywords:
+        get_prompt_gpt3 = asyncio.create_task(get_content_task(keyword, sentences_for_keyword))
+        filtered_content = await get_prompt_gpt3
+        page_content += filtered_content
         
-        keywords_string = ", ".join(keywords)
+        keywords = get_keywords_from_keyword(keyword)
+    
+
+    page_data_task = asyncio.create_task(generate_page_data(keywords, page_content))
+    page_data = await page_data_task
+
+    save_page_content(page_data)
+    
+    keywords_string = ", ".join(keywords)"""
 
 #asyncio.run(get_GPT_statistics_task())
 #asyncio.run(generate_page_data("webinar", lst))
