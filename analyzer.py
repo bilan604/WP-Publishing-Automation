@@ -237,9 +237,8 @@ async def get_GPT_statistics_task(credentials={}):
         keywords_string = ", ".join(keywords)
         
         
-
-
-
+# Testing overrides
+"""
 lst = [
     'when it comes to additional functionalities customers prioritize flexible viewing experiences. webinar marketing statistics further reveal that besides being able to view it at any given time viewers also value receiving slides as a part of a presentation downloading additional resources and the watch later functionality.',
     'research shows that 58% of marketers use webinars as a promotion tool. studies show that between 2% and 5% of webinar attendees eventually make a purchase at the end of the webinar.',
@@ -248,6 +247,6 @@ lst = [
     'digital activity peaked after the covid 19 outbreak and remains at all time high levels as professionals embrace a hybrid system of online and in person workflow. marketers have been racing to find the best practices for webinars to cut the noise and stand out among the crowd. webinar statistics demonstrate that most marketers choose to improve audience interaction via polls questions and votes followed by simplicity and ease of use 28% and flexible formats 27% .',
     'the percentage of marketers who run up to 150 webinars per year is satisfactory and amounts to 29%. 80% of organizations hosting training webinars produce as many as 100 webinars per year while a total of 93% of webinars for continuing education are organized 150 times per year according to a webinar benchmarks report.'
 ]
-
+"""
 #asyncio.run(get_GPT_statistics_task())
-asyncio.run(generate_page_data("webinar", lst))
+#asyncio.run(generate_page_data("webinar", lst))
