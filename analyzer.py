@@ -4,8 +4,8 @@ import time
 import json
 import openai
 import asyncio
-from requesting.send_request import create_post
-
+from requesting.send_request import post_request
+from parsing import *
 
 
 row_numbers = {}
@@ -13,45 +13,11 @@ relevent_data_by_row = {}
 sentences = {}
 
 
-def get_keywords_from_keyword(keyword):
-    if not keyword:
-        return []
-    global row_numbers
-    keywords = []
-    for __keyword in row_numbers:
-        if row_numbers[__keyword] == row_numbers[keyword]:
-            keywords.append(__keyword)
-    return keywords
-
-def filter_content(keywords, row_sentences):
-    # max 300 for 2500 prompt content/context (Not including response and 390 existing prompt)
-    row_sentences = [s for s in row_sentences if 10 < len(s) < 300]
-    keyword_set = set({})
-    for keyword in keywords:
-        for word in keyword.lower().split(" "):
-            keyword_set.add(word)
-    match_counter = {i: sum([1 if word in keyword_set else 0 for word in row_sentences[i].lower().split()]) for i in range(len(row_sentences))}
-    # sort the sentences for all keywords queries in the row by how many unique words across all keywords
-    # the sentence contains
-    match_counter = dict(sorted(match_counter.items(), key=lambda x: x[1], reverse=True))
-    # penalty for length?
-    row_sentences = [row_sentences[idx] for idx in list(match_counter.keys())]
-
-    total_length = 0
-    for j in range(len(row_sentences)):
-        total_length += len(row_sentences[j])
-        if total_length > 2500:
-            row_sentences = row_sentences[:j]
-            break
-
-    return row_sentences
-
-
 async def get_openai_result(prompt):
-    #KEY = "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"
-    KEY = "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"
+    KEY = "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"
+
     openai.api_key = KEY
-    
+
     if type(prompt) != str:
         return
     if len(prompt) == 0:
@@ -63,69 +29,7 @@ async def get_openai_result(prompt):
     return response.choices[0].text
 
 
-def parse_response(response):
-    if not response:
-        return []
-    for var in ("response = ", "Response = ", "response=", "Response="):
-        if var in response:
-            response = response.split(var)[1]
-            break
-        
-    if "[" in response:
-        response = response.split("[")[1]
-    if "]" in response:
-        response = response.split("]")[0]
-    
-    response = response.split(",")
-    response = [r.strip() for r in response]
-    return response
-
-
-def save_response(keyword, response):
-    response = parse_response(response)
-    with open("responses.txt", "a") as f:
-        f.write("KEYWORD:" + keyword + "\n")
-        for resp in response:
-            f.write(resp + "\n")
-    return
-
-def save_page_content(page_data, folder_name="page_contents", file_name= "page_content.json"):
-    do = False
-    for file in os.listdir():
-        if file.find(folder_name) == 0:
-            do = True
-            break
-    
-    if not do:
-        folder_name = "wordpress/" + folder_name
-
-    with open(folder_name + "/" + file_name, "w") as file:
-        json.dump(page_data, file)
-
-    print(f"Page content saved to '{folder_name + file_name}'.")
-    return
-
-
-def get_page_contents_string(lst):
-    s = "||||".join(lst)
-    s = re.sub("\n", " ", s)
-    s = re.sub("( \.( )+?|\. | \.)", ". ", s)
-    s = re.sub(" +?", " ", s)
-    s = s.split("||||")
-
-    cache = []
-    for si in s:
-
-        cache += si.split(".")
-
-    cache = [c.strip() for c in cache]
-    s = [ci[0].upper()+ci[1:] for ci in cache if 6 < len(ci.split(" ")) < 500]
-    s = ". ".join(s)
-    return s
-
-
-##################################
-async def __get_content_task(keywords_string, page_contents):
+async def get_content_task(keywords_string, page_contents):
     print("REACHED PROMPT")
     
     print("___________________________________\nPrompting")
@@ -134,85 +38,84 @@ async def __get_content_task(keywords_string, page_contents):
     parsed_responses = []
     total_length = 0
     curr = []
-    for i, content in enumerate(page_contents):
-        if total_length + len(content) >= 2500:
+    for content in page_contents:
+        if sum(list(map(len, parsed_responses))) > 4000:
+            break
+        if total_length + len(content) >= 4000:
             page_contents_string = "\n".join(curr)
 
             prompt = f"The following text was extracted from a link from a Google search for the keywords \"{keywords_string}\". "
             prompt += f"Please extract and present as much empirical statistical information related to the keywords from the following text as possible:\n"
             prompt += "\"\"\"\n" + page_contents_string + "\n\"\"\"\n"
-            prompt += "Format your response as a list of whole sentences separated by commas\n"
-            prompt += "i.e.\nresponse = [\"Webinars receive 47% of their views up to ten days after the initial event\", \"The webinar market is projected to reach 800 million by 2023\"]\n"
-            print(f" {prompt=} ")
+            prompt += "Format your response as a paragraph.\n"
 
-            get_gpt3_response = asyncio.create_task(get_openai_result(prompt))
-            response = await get_gpt3_response
+            get_openai_result_task = asyncio.create_task(get_openai_result(prompt))
+            response = await get_openai_result_task
+
             print(f" {response=} ")
-            parsed_response = parse_response(response)
-            print(parsed_response)
-            parsed_responses += parsed_response
+            parsed_responses += [response]
 
             curr = []
             total_length = 0
         else:
             curr.append(content)
             total_length += len(content)
-            
+    
+    print(f" {parsed_responses=} ")
     return parsed_responses
 
-async def get_content_task(about, page_contents):
-    # about: str for prompt: any
-    s = "\n".join(page_contents)
-    print("REACHED PROMPT")
-    prompt1 = "Please note the following list of sentences related to the keyword \"" + about + "\":"
-    prompt1 += "\"\"\""
-    prompt1 += s
-    prompt1 += "\"\"\" "
-    openai_response_task = asyncio.create_task(get_openai_result(prompt1))
-    openai_response = await openai_response_task
-    print("\n\nOpenAI RESPONSE:", openai_response)
-    return
+async def generate_page_data(topic, content):
 
-async def get_prompt_section_task(keywords, section_type, content):
-    print(f" {keywords=} {section_type} {content} ")
-    topic = keywords
-    if type(topic) != str:
-        topic = ", ".join(topic)
-    prompt = "Create a " +  section_type + " section for a wordpress blog on " + topic + ".\n"
-    prompt += "The content for the site is:\n"
-    prompt += "\"\"\"\n" + " ".join(content) + "\n\"\"\"\n"
-    print(f" {prompt=} ")
-    get_gpt3_response = asyncio.create_task(get_openai_result(prompt))
-    response = await get_gpt3_response
-    print(f" {response=} ")
-    return response
+    prompt1 = "Please remember the following information about\"" + topic + "\":\n"
+    prompt1 += "\"\"\"\n"
+    prompt1 += content + "\n"
+    prompt1 += "\"\"\"\n"
+    prompt1 += "Respond with a confirmation that you will remember."
+    print(f" {prompt1=} \n")
+
+    prompt2 = "From the information about " + topic + " generate the \"title\", \"intro\", and \"conclusion\" sections for a blog about " + topic + ".\n"
+    prompt2 += "Return your response as a Python dictionary with the keys \"title\", \"intro\",  and \"conclusion\".\n"
+    print(f" {prompt2=} ")
+
+    task1 = asyncio.create_task(get_openai_result(prompt1))
+    response1 = await task1
+
+    task2 = asyncio.create_task(get_openai_result(prompt2))
+    response2 = await task2
+    response2 = parse_response2(response2)
+    print(f"RESP2:{response2}")
+
+    try:
+        page_data = json.loads(response2)
+        page_data["statistics_in_groups"] = content
+        #page_data["references"] = ""
+        return page_data
+        
+    except:
+        print("Crash converting to json object")
+        crash_data = {}
+        crash_data["title"] = topic
+        crash_data["statistics_in_groups"] = content
+        return crash_data
 
 
-async def generate_page_data(keywords, page_content):
-    get_intro_content = asyncio.create_task(get_prompt_section_task(keywords, "intro", page_content))
-    intro_content = await get_intro_content
+# cache the keywords for the row
+def parse_saved_data(relevant_data_by_row, row_numbers, sentences):
+    # used for abouts now
+    row_keywords = {}
+    page_data = {}
+    for token in row_numbers:
+        for aspect in row_numbers[token]:
+            row = row_numbers[token][aspect]
+            if row not in page_data:
+                page_data[row] = []
 
-    get_statistics_content = asyncio.create_task(get_prompt_section_task(keywords, "statistics in groups", page_content))
-    statistics_content = await get_statistics_content
+            if row not in row_keywords:
+                row_keywords[row] = aspect
 
-    get_reference_content = asyncio.create_task(get_prompt_section_task(keywords, "reference info", page_content))
-    reference_content = await get_reference_content
-
-    get_conclusion_content = asyncio.create_task(get_prompt_section_task(keywords, "conclusion", page_content))
-    conclusion_content = await get_conclusion_content
-
-    get_title_content = asyncio.create_task(get_prompt_section_task(keywords, "title", page_content))
-    title_content = await get_title_content
-
-    page_data = {
-        "title_content": title_content,
-        "intro_content": intro_content,
-        "statistics_content": statistics_content,
-        "reference_content": reference_content,
-        "conclusion_content": conclusion_content
-    }
-
-    return page_data
+            for id in relevant_data_by_row[row][token]:
+                page_data[row] += [sentences[id]]
+    return page_data, row_keywords
 
 
 async def get_GPT_statistics_task(credentials={}):
@@ -228,41 +131,25 @@ async def get_GPT_statistics_task(credentials={}):
         global row_numbers
         row_numbers = json.load(row_numbers_file)
     
-
-    page_data = {}
-    for topic in row_numbers:
-        for aspect in row_numbers[topic]:
-            row = row_numbers[topic][aspect]
-            
-            for id in relevant_data_by_row[row][topic]:
-                print(row, sentences[id])
-                if row not in page_data:
-                    page_data[row] = []
-                page_data[row] += [sentences[id]]
-    """
-    # VIEWING
-    print(page_data)
-    for key in page_data:
-        print(key, len(page_data[key]), page_data[key][:2])
-    """
+    page_data, row_keywords = parse_saved_data(relevant_data_by_row, row_numbers, sentences)
+    
     for row in page_data:
-        asyncio.create_task(get_content_task("Apple", page_data[row]))
-
-    """
-    for keyword in keywords:
-        get_prompt_gpt3 = asyncio.create_task(get_content_task(keyword, sentences_for_keyword))
-        filtered_content = await get_prompt_gpt3
-        page_content += filtered_content
         
-        keywords = get_keywords_from_keyword(keyword)
-    
+        get_parsed_responses = asyncio.create_task(get_content_task(row_keywords[row], page_data[row]))
+        parsed_responses = await get_parsed_responses
 
-    page_data_task = asyncio.create_task(generate_page_data(keywords, page_content))
-    page_data = await page_data_task
-
-    save_page_content(page_data)
-    
-    keywords_string = ", ".join(keywords)"""
-
-#asyncio.run(get_GPT_statistics_task())
-#asyncio.run(generate_page_data("webinar", lst))
+        content = get_content(parsed_responses)
+        
+        topic = row_keywords[row]
+        get_page_data = asyncio.create_task(generate_page_data(topic, content))
+        page_data = await get_page_data
+        
+        with open("page_data.txt", "a") as f:
+            try:
+                data = json.dumps(page_data)            
+                f.write(data + "\n")
+                post_request_task = asyncio.create_task(post_request(page_data))
+                await post_request_task
+            except:
+                pass
+    return

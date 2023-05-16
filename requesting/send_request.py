@@ -6,50 +6,35 @@ import requests
 import json
 import asyncio
 from requests.auth import HTTPBasicAuth
+import requests
+import json
+import base64
+import requests
+
+import tracemalloc
+tracemalloc.start()
 
 
-async def create_post(page_data, wpBaseURL, postStatus, credentials):
-    #prompt_data: {"keywords": str, "rowNo": str, "content": [{"content_type": str, "link": str}]}
-    
-    ########## Override
-    wpBaseURL = "https://wordpress-923757-3513525.cloudwaysapps.com/"
 
-    WP_url = wpBaseURL + "/wp-json/wp/v2/posts"
+async def post_request(page_data):
+    if not url:
+        url = "https://wordpress-923757-3513525.cloudwaysapps.com"
 
-    auth = HTTPBasicAuth(credentials["WORDPRESS_USER"], credentials["WORDPRESS_PASS"])
+    if "/wp-json/wp/v2/posts" not in url:
+        url += "/wp-json/wp/v2/posts"
 
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-    }
+    # set authentication
+    username = ""
+    password = ""
+    auth = (username, password)    
 
-    payload = { 
-        "status":postStatus,
-        "title": page_data["content"]["title"],
-        "intro": page_data["content"]["intro"],
-        "statistics_in_groups": page_data["content"]["statistics_in_groups"],
-        "reference_info": page_data["content"]["reference_info"],
-        "conclusion": page_data["content"]["conclusion"],
-    }
+    # make post request
+    response = requests.post(url, data=page_data, auth=auth)
 
-    print(payload)
-    print("STOPPING\n\n---------------------------")
-    import time
-    time.sleep(15000)
-    response = requests.request(
-        "POST",
-        WP_url,
-        data=payload,
-        headers=headers,
-        auth=auth
-    )
+    return response.status_code
 
-    print(response)
-    return
+#asyncio.run(create_post({}, ""))
 
-async def fetch_data(link, params):
-    response = requests.get(link, params)
-    return response
 
 async def get_api_result(api_key, num_pages, query):
     params = {

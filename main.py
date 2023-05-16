@@ -1,6 +1,6 @@
 import asyncio
 import pandas as pd
-
+from handler import get_handle_statistics
 
 def clear():
     import json
@@ -13,9 +13,9 @@ def clear():
 
 
 async def main():
-    ##############################
+    ##################
     #clears saved data
-    #clear()
+    clear()
     
     ######### Overide
     blacklisted_urls = ["www.bloomberg.com", "www.kinsta.com", "www.nasdaq.com"]
@@ -31,16 +31,16 @@ async def main():
     queries = {}
     columns = {colName: list(df[colName]) for colName in df.columns}
 
+
     ################################################
-    ################################################
-    ################################################
+    # override 25
     for i in range(25):
         queries[i] = {
             "keywords": columns["keywords"][i],
             "results to check": columns["results to check"][i],
             "status": columns["status"][i]
         }
-    from handler import get_handle_statistics
+    
     get_statistics = asyncio.create_task(get_handle_statistics(queries, blacklisted_urls, credentials))
     await get_statistics
     return 
