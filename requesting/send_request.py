@@ -5,7 +5,6 @@
 import requests
 import json
 import asyncio
-from requests.auth import HTTPBasicAuth
 import requests
 import json
 import base64
@@ -17,34 +16,52 @@ tracemalloc.start()
 
 
 async def post_request(page_data):
-    if not url:
-        url = "https://wordpress-923757-3513525.cloudwaysapps.com"
 
-    if "/wp-json/wp/v2/posts" not in url:
-        url += "/wp-json/wp/v2/posts"
+    domain = "wordpress-923757-3513525.cloudwaysapps.com"
+    username = "affiliat"
+    password = "UZn4x67bg9C"
 
-    # set authentication
-    username = ""
-    password = ""
-    auth = (username, password)    
+    user_pass = username + ":" + password
+    print(user_pass)
+    Authorization_Basic = base64.b64encode(user_pass.encode('utf-8')) 
 
-    # make post request
-    response = requests.post(url, data=page_data, auth=auth)
-
-    return response.status_code
-
-#asyncio.run(create_post({}, ""))
-
-
-async def get_api_result(api_key, num_pages, query):
-    params = {
-        'api_key': api_key,
-        'q': query,
-        "page": 1,
-        "max_page": 1,
-        "num": num_pages,
-        
+    login_url = f'https://{domain}/wp-login.php'
+    login_data = {
+        'log': username,
+        'pwd': password,
+        'wp-submit': 'Log In',
+        'testcookie': '1'
     }
-    get_response = asyncio.create_task(fetch_data("https://api.valueserp.com/search", params))
-    response = await get_response
-    return response
+
+    session = requests.Session()
+    response = session.post(login_url, data=login_data)
+    if response.status_code == 200:
+        print('Authentication successful')
+    else:
+        print('Authentication failed')
+        return
+    
+    new_post_url = f'https://{domain}/wp-json/wp/v2/posts'
+    new_post_data = {
+      "title": page_data["title"],
+      "intro": page_data["intro"],
+      "content": page_data["statistics_in_groups"],
+      "conclusion": page_data["conclusion"],
+      "status": "draft",
+    }
+    new_post_data = {
+        "contentType": "application/json",
+        "payload": new_post_data,
+        "headers": {
+           "Authorization": "Basic " + str(Authorization_Basic)
+        }
+    }
+
+    response = session.post(new_post_url, json=new_post_data)
+    if response.status_code == 201:
+        print('Post created successfully')
+    else:
+        print('Failed to create post')
+        print(response.text)
+    return 
+
